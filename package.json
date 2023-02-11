@@ -1,6 +1,6 @@
 {
-  "name": "vite-ts-lib-starter",
-  "version": "0.0.0",
+  "name": "parten",
+  "version": "0.0.1",
   "main": "./dist/my-lib.umd.js",
   "module": "./dist/my-lib.es.js",
   "exports": {
