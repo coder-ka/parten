@@ -77,7 +77,7 @@ export function seq(
         const { index: nextIndex, value } = parser.parse(str, index, context);
 
         index = nextIndex;
-        if (res !== undefined) {
+        if (value !== undefined) {
           res.push(value);
         }
 
