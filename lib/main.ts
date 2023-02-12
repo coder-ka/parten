@@ -112,7 +112,60 @@ export function or(e1: Expression, e2: Expression): Parser {
   };
 }
 
-export function empty<T>(value: T): Parser {
+export function opt(expr: Expression): Parser {
+  return or(expr, empty());
+}
+
+export const zom = zeroOrMore;
+export function zeroOrMore(expr: Expression): Parser {
+  const parser = toParser(expr);
+
+  return {
+    parse(str, index = 0, context) {
+      const res = [] as unknown[];
+      let curIndex = index;
+
+      while (true) {
+        try {
+          const { index: nextIndex, value } = parser.parse(
+            str,
+            curIndex,
+            context
+          );
+
+          if (value !== undefined) {
+            res.push(value);
+          }
+
+          curIndex = nextIndex;
+        } catch (error) {
+          break;
+        }
+      }
+
+      return {
+        value: res,
+        index: curIndex,
+      };
+    },
+  };
+}
+
+export function ignore(expr: Expression): Parser {
+  const parser = toParser(expr);
+  return {
+    parse(str, index, context) {
+      const res = parser.parse(str, index, context);
+
+      return {
+        ...res,
+        value: undefined,
+      };
+    },
+  };
+}
+
+export function empty<T>(value?: T): Parser {
   return {
     parse(_str, index = 0) {
       return {
@@ -152,6 +205,10 @@ export function exists(target: string): Parser {
       };
     },
   };
+}
+
+export function word(): Parser {
+  return regexp(/\w+/);
 }
 
 export function string(expr: string): Parser {
