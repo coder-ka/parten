@@ -39,7 +39,7 @@ function fnCallLike(): Expression {
 const expr = zom(or(whitespaces, fnCallLike()));
 
 const { value } = translate(
-  `  test1   test2() test3(1) test4(23,"a   \\\" hoge",true , false, null )`,
+  `  test1   test2() test3(1) test4(23,"a   \\\" hoge",true , false, null ) test5(test6("hoge", true, null))`,
   expr
 );
 
