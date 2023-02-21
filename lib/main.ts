@@ -1,4 +1,4 @@
-export type Parser = {
+export interface Parser {
   parse(
     str: string,
     index?: number,
@@ -7,7 +7,7 @@ export type Parser = {
     value: unknown;
     index: number;
   };
-};
+}
 
 export type Expression = string | RegExp | Parser;
 
@@ -33,7 +33,7 @@ export function translate(str: string, expr: Expression): TranslationResult {
 
   if (index !== str.length)
     throw new Error(
-      `string length does not match.expected: ${str.length}.actual: ${index}.`
+      `string length does not match. expected: ${str.length} actual: ${index}`
     );
 
   return {
@@ -43,6 +43,25 @@ export function translate(str: string, expr: Expression): TranslationResult {
 }
 
 // utility parsers
+export function debugExpr(expr: Expression): Parser {
+  const p = toParser(expr);
+  return {
+    parse(str, index, context) {
+      try {
+        const res = p.parse(str, index, context);
+        console.log("index:", res.index);
+        console.dir(res.value, {
+          depth: null,
+        });
+
+        return res;
+      } catch (error) {
+        console.log(error);
+        throw error;
+      }
+    },
+  };
+}
 
 export function seq(
   strings: TemplateStringsArray,
@@ -101,12 +120,14 @@ export function lazy(resolveExpr: () => Expression): Parser {
 }
 
 export function or(e1: Expression, e2: Expression): Parser {
+  const p1 = toParser(e1);
+  const p2 = toParser(e2);
   return {
     parse(str, index, context) {
       try {
-        return toParser(e1).parse(str, index, context);
+        return p1.parse(str, index, context);
       } catch (error) {
-        return toParser(e2).parse(str, index, context);
+        return p2.parse(str, index, context);
       }
     },
   };
@@ -117,7 +138,10 @@ export function opt(expr: Expression): Parser {
 }
 
 export const zom = zeroOrMore;
-export function zeroOrMore(expr: Expression): Parser {
+export function zeroOrMore(
+  expr: Expression,
+  options: { max: number } = { max: Infinity }
+): Parser {
   const parser = toParser(expr);
 
   return {
@@ -125,7 +149,13 @@ export function zeroOrMore(expr: Expression): Parser {
       const res = [] as unknown[];
       let curIndex = index;
 
+      let i = 0;
       while (true) {
+        i++;
+        if (i > options.max) {
+          console.log("Max zero or more times reached.");
+          break;
+        }
         try {
           const { index: nextIndex, value } = parser.parse(
             str,
@@ -165,12 +195,25 @@ export function ignore(expr: Expression): Parser {
   };
 }
 
-export function empty<T>(value?: T): Parser {
+export function notEmpty(expr: Expression): Parser {
+  const p = toParser(expr);
+  return {
+    parse(str, index, context) {
+      const res = p.parse(str, index, context);
+
+      if (res.value === "") throw new Error("");
+
+      return res;
+    },
+  };
+}
+
+export function empty(): Parser {
   return {
     parse(_str, index = 0) {
       return {
         index,
-        value,
+        value: undefined,
       };
     },
   };
@@ -208,7 +251,7 @@ export function exists(target: string): Parser {
 }
 
 export function word(): Parser {
-  return regexp(/\w+/);
+  return regexp(/^\w+/);
 }
 
 export function string(expr: string): Parser {
@@ -225,7 +268,7 @@ export function string(expr: string): Parser {
       }
 
       return {
-        value: undefined,
+        value: expr,
         index,
       };
     },
