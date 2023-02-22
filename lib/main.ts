@@ -1,8 +1,7 @@
 export interface Parser {
   parse(
     str: string,
-    index: number,
-    context?: ParseContext
+    index: number
   ): {
     value: unknown;
     index: number;
@@ -10,8 +9,6 @@ export interface Parser {
 }
 
 export type Expression = string | RegExp | Parser;
-
-type ParseContext = {};
 
 type TranslationResult = {
   value: unknown;
@@ -46,9 +43,9 @@ export function translate(str: string, expr: Expression): TranslationResult {
 export function debugExpr(expr: Expression): Parser {
   const p = toParser(expr);
   return {
-    parse(str, index, context) {
+    parse(str, index) {
       try {
-        const res = p.parse(str, index, context);
+        const res = p.parse(str, index);
         console.log("index:", res.index);
         console.dir(res.value, {
           depth: null,
@@ -67,8 +64,8 @@ export function map(expr: Expression, fn: (v: unknown) => unknown): Parser {
   const p = toParser(expr);
 
   return {
-    parse(str, index, context) {
-      const res = p.parse(str, index, context);
+    parse(str, index) {
+      const res = p.parse(str, index);
 
       return {
         ...res,
@@ -82,8 +79,8 @@ export function check(expr: Expression): Parser {
   const p = toParser(expr);
 
   return {
-    parse(str, index, context) {
-      const res = p.parse(str, index, context);
+    parse(str, index) {
+      const res = p.parse(str, index);
 
       return {
         ...res,
@@ -122,9 +119,9 @@ export function seq(
     .map(toParser);
 
   return {
-    parse(str, index, context) {
+    parse(str, index) {
       const value = parsers.reduce((res, parser) => {
-        const { index: nextIndex, value } = parser.parse(str, index, context);
+        const { index: nextIndex, value } = parser.parse(str, index);
 
         index = nextIndex;
         if (value !== undefined) {
@@ -144,8 +141,8 @@ export function seq(
 
 export function lazy(resolveExpr: () => Expression): Parser {
   return {
-    parse(str, index, context) {
-      return toParser(resolveExpr()).parse(str, index, context);
+    parse(str, index) {
+      return toParser(resolveExpr()).parse(str, index);
     },
   };
 }
@@ -154,11 +151,11 @@ export function or(e1: Expression, e2: Expression): Parser {
   const p1 = toParser(e1);
   const p2 = toParser(e2);
   return {
-    parse(str, index, context) {
+    parse(str, index) {
       try {
-        return p1.parse(str, index, context);
+        return p1.parse(str, index);
       } catch (error) {
-        return p2.parse(str, index, context);
+        return p2.parse(str, index);
       }
     },
   };
@@ -176,7 +173,7 @@ export function zeroOrMore(
   const parser = toParser(expr);
 
   return {
-    parse(str, index, context) {
+    parse(str, index) {
       const res = [] as unknown[];
       let curIndex = index;
 
@@ -188,11 +185,7 @@ export function zeroOrMore(
           break;
         }
         try {
-          const { index: nextIndex, value } = parser.parse(
-            str,
-            curIndex,
-            context
-          );
+          const { index: nextIndex, value } = parser.parse(str, curIndex);
 
           if (value !== undefined) {
             res.push(value);
@@ -215,8 +208,8 @@ export function zeroOrMore(
 export function ignore(expr: Expression): Parser {
   const parser = toParser(expr);
   return {
-    parse(str, index, context) {
-      const res = parser.parse(str, index, context);
+    parse(str, index) {
+      const res = parser.parse(str, index);
 
       return {
         ...res,
@@ -229,8 +222,8 @@ export function ignore(expr: Expression): Parser {
 export function notEmpty(expr: Expression): Parser {
   const p = toParser(expr);
   return {
-    parse(str, index, context) {
-      const res = p.parse(str, index, context);
+    parse(str, index) {
+      const res = p.parse(str, index);
 
       if (res.value === "") throw new Error("");
 
