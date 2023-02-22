@@ -29,7 +29,7 @@ const arg = or(
 );
 
 function args(): Expression {
-  return zom(trim(or(arg, comma)));
+  return seq`${trim(arg)}${opt(seq`${trim(comma)}${opt(lazy(args))}`)}`;
 }
 
 function fnCallLike(): Expression {
@@ -39,7 +39,7 @@ function fnCallLike(): Expression {
 const expr = zom(or(whitespaces, fnCallLike()));
 
 const { value } = translate(
-  `  test1   test2() test3(1) test4(23,"a   \\\" hoge",,,true ,,, false,,,,, null,,, ) test5(test6("hoge", true, null))`,
+  `  test1   test2() test3(1) test4(23,"a   \\\" hoge",true , false, null, ) test5(test6("hoge", true, null))`,
   expr
 );
 
