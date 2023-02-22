@@ -1,7 +1,7 @@
 export interface Parser {
   parse(
     str: string,
-    index?: number,
+    index: number,
     context?: ParseContext
   ): {
     value: unknown;
@@ -29,7 +29,7 @@ export function toParser(expr: Expression): Parser {
 }
 
 export function translate(str: string, expr: Expression): TranslationResult {
-  const { index, value } = toParser(expr).parse(str);
+  const { index, value } = toParser(expr).parse(str, 0);
 
   if (index !== str.length)
     throw new Error(
@@ -63,6 +63,37 @@ export function debugExpr(expr: Expression): Parser {
   };
 }
 
+export function map(expr: Expression, fn: (v: unknown) => unknown): Parser {
+  const p = toParser(expr);
+
+  return {
+    parse(str, index, context) {
+      const res = p.parse(str, index, context);
+
+      return {
+        ...res,
+        value: fn(res.value),
+      };
+    },
+  };
+}
+
+export function check(expr: Expression): Parser {
+  const p = toParser(expr);
+
+  return {
+    parse(str, index, context) {
+      const res = p.parse(str, index, context);
+
+      return {
+        ...res,
+        value: undefined,
+        index,
+      };
+    },
+  };
+}
+
 export function seq(
   strings: TemplateStringsArray,
   ...exprs: Expression[]
@@ -91,7 +122,7 @@ export function seq(
     .map(toParser);
 
   return {
-    parse(str, index = 0, context) {
+    parse(str, index, context) {
       const value = parsers.reduce((res, parser) => {
         const { index: nextIndex, value } = parser.parse(str, index, context);
 
@@ -145,7 +176,7 @@ export function zeroOrMore(
   const parser = toParser(expr);
 
   return {
-    parse(str, index = 0, context) {
+    parse(str, index, context) {
       const res = [] as unknown[];
       let curIndex = index;
 
@@ -210,7 +241,7 @@ export function notEmpty(expr: Expression): Parser {
 
 export function empty(): Parser {
   return {
-    parse(_str, index = 0) {
+    parse(_str, index) {
       return {
         index,
         value: undefined,
@@ -221,7 +252,7 @@ export function empty(): Parser {
 
 export function end<T>(value: T): Parser {
   return {
-    parse(str, index = 0) {
+    parse(str, index) {
       if (str.length === index) {
         return {
           index,
@@ -234,7 +265,7 @@ export function end<T>(value: T): Parser {
 
 export function exists(target: string): Parser {
   return {
-    parse(str, index = 0) {
+    parse(str, index) {
       for (let i = 0, imax = target.length; i < imax; i++) {
         const char = target[i];
         if (str[index + i] !== char) {
@@ -256,7 +287,7 @@ export function word(): Parser {
 
 export function string(expr: string): Parser {
   return {
-    parse(str, index = 0) {
+    parse(str, index) {
       for (let i = 0; i < expr.length; i++) {
         if (str[index] !== expr[i]) {
           throw new Error(
@@ -277,7 +308,7 @@ export function string(expr: string): Parser {
 
 export function regexp(expr: RegExp): Parser {
   return {
-    parse(str, index = 0) {
+    parse(str, index) {
       const matched = expr.exec(str.slice(index));
 
       if (matched === null || matched.index !== 0) {
@@ -296,7 +327,7 @@ export function regexp(expr: RegExp): Parser {
 
 export function integer(): Parser {
   return {
-    parse(str, index = 0) {
+    parse(str, index) {
       let value = "";
       while (true) {
         const code = str.charCodeAt(index);
