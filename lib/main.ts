@@ -60,7 +60,7 @@ export function debugExpr(expr: Expression): Parser {
   };
 }
 
-export function map(expr: Expression, fn: (v: unknown) => unknown): Parser {
+export function map<T>(expr: Expression, fn: (v: any) => T): Parser {
   const p = toParser(expr);
 
   return {
