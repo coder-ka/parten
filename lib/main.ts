@@ -1,31 +1,29 @@
-export interface Parser {
+export interface Parser<T> {
   parse(
     str: string,
     index: number
   ): {
-    value: unknown;
+    value: T;
     index: number;
   };
 }
 
-export type Expression = string | RegExp | Parser;
+export type Expression<T> = Parser<T>;
+export type GetExprValue<E> = E extends Expression<infer R> ? R : never;
 
-type TranslationResult = {
-  value: unknown;
+type TranslationResult<T> = {
+  value: T;
   index: number;
 };
 
-export function toParser(expr: Expression): Parser {
-  if (typeof expr === "string") {
-    return string(expr);
-  } else if (expr instanceof RegExp) {
-    return regexp(expr);
-  } else {
-    return expr;
-  }
+export function toParser<T>(expr: Expression<T>): Parser<T> {
+  return expr;
 }
 
-export function translate(str: string, expr: Expression): TranslationResult {
+export function translate<T>(
+  str: string,
+  expr: Expression<T>
+): TranslationResult<T> {
   const { index, value } = toParser(expr).parse(str, 0);
 
   if (index !== str.length)
@@ -40,7 +38,7 @@ export function translate(str: string, expr: Expression): TranslationResult {
 }
 
 // utility parsers
-export function debugExpr(expr: Expression): Parser {
+export function debugExpr<T>(expr: Expression<T>): Parser<T> {
   const p = toParser(expr);
   return {
     parse(str, index) {
@@ -60,7 +58,10 @@ export function debugExpr(expr: Expression): Parser {
   };
 }
 
-export function map<T>(expr: Expression, fn: (v: any) => T): Parser {
+export function map<T1, T2>(
+  expr: Expression<T1>,
+  fn: (v: T1) => T2
+): Parser<T2> {
   const p = toParser(expr);
 
   return {
@@ -75,7 +76,7 @@ export function map<T>(expr: Expression, fn: (v: any) => T): Parser {
   };
 }
 
-export function check(expr: Expression): Parser {
+export function check<T>(expr: Expression<T>): Parser<undefined> {
   const p = toParser(expr);
 
   return {
@@ -91,45 +92,29 @@ export function check(expr: Expression): Parser {
   };
 }
 
-export function seq(
+export function seq<T>(
   strings: TemplateStringsArray,
-  ...exprs: Expression[]
-): Parser {
+  ...exprs: Expression<T>[]
+): Parser<T[]> {
   const parsers = [
-    strings[0],
+    ignore(string(strings[0])),
     ...Array(exprs.length)
       .fill(null)
-      .flatMap((_, i) => [exprs[i], strings[i + 1]]),
-  ]
-    .reduce((res, item) => {
-      if (item === "") return res;
-
-      if (res.length) {
-        const last = res[res.length - 1];
-        if (typeof last === "string" && typeof item === "string") {
-          res[res.length - 1] = last + item;
-          return res;
-        }
-      }
-
-      res.push(item);
-
-      return res;
-    }, [] as Expression[])
-    .map(toParser);
+      .flatMap((_, i) => [exprs[i], ignore(string(strings[i + 1]))]),
+  ];
 
   return {
     parse(str, index) {
-      const value = parsers.reduce((res, parser) => {
+      const value = parsers.flatMap((parser) => {
         const { index: nextIndex, value } = parser.parse(str, index);
 
         index = nextIndex;
-        if (value !== undefined) {
-          res.push(value);
+        if (value === undefined) {
+          return [];
         }
 
-        return res;
-      }, [] as unknown[]);
+        return [value];
+      });
 
       return {
         value,
@@ -139,7 +124,7 @@ export function seq(
   };
 }
 
-export function lazy(resolveExpr: () => Expression): Parser {
+export function lazy<T>(resolveExpr: () => Expression<T>): Parser<T> {
   return {
     parse(str, index) {
       return toParser(resolveExpr()).parse(str, index);
@@ -147,7 +132,10 @@ export function lazy(resolveExpr: () => Expression): Parser {
   };
 }
 
-export function or(e1: Expression, e2: Expression): Parser {
+export function or<T1, T2>(
+  e1: Expression<T1>,
+  e2: Expression<T2>
+): Parser<T1 | T2> {
   const p1 = toParser(e1);
   const p2 = toParser(e2);
   return {
@@ -161,20 +149,20 @@ export function or(e1: Expression, e2: Expression): Parser {
   };
 }
 
-export function opt(expr: Expression): Parser {
+export function opt<T>(expr: Expression<T>) {
   return or(expr, empty());
 }
 
 export const zom = zeroOrMore;
-export function zeroOrMore(
-  expr: Expression,
+export function zeroOrMore<T>(
+  expr: Expression<T>,
   options: { max: number } = { max: Infinity }
-): Parser {
+): Parser<T[]> {
   const parser = toParser(expr);
 
   return {
     parse(str, index) {
-      const res = [] as unknown[];
+      const res = [] as T[];
       let curIndex = index;
 
       let i = 0;
@@ -205,7 +193,7 @@ export function zeroOrMore(
   };
 }
 
-export function ignore(expr: Expression): Parser {
+export function ignore<T>(expr: Expression<T>): Parser<undefined> {
   const parser = toParser(expr);
   return {
     parse(str, index) {
@@ -219,7 +207,7 @@ export function ignore(expr: Expression): Parser {
   };
 }
 
-export function notEmpty(expr: Expression): Parser {
+export function notEmpty<T>(expr: Expression<T>): Parser<T> {
   const p = toParser(expr);
   return {
     parse(str, index) {
@@ -232,7 +220,7 @@ export function notEmpty(expr: Expression): Parser {
   };
 }
 
-export function empty(): Parser {
+export function empty(): Parser<undefined> {
   return {
     parse(_str, index) {
       return {
@@ -243,7 +231,7 @@ export function empty(): Parser {
   };
 }
 
-export function end<T>(value: T): Parser {
+export function end<T>(value: T): Parser<T> {
   return {
     parse(str, index) {
       if (str.length === index) {
@@ -256,7 +244,7 @@ export function end<T>(value: T): Parser {
   };
 }
 
-export function exists(target: string): Parser {
+export function exists(target: string): Parser<true> {
   return {
     parse(str, index) {
       for (let i = 0, imax = target.length; i < imax; i++) {
@@ -274,11 +262,12 @@ export function exists(target: string): Parser {
   };
 }
 
-export function word(): Parser {
+export function word() {
   return regexp(/^\w+/);
 }
 
-export function string(expr: string): Parser {
+export const str = string;
+export function string<TString extends string>(expr: TString): Parser<TString> {
   return {
     parse(str, index) {
       for (let i = 0; i < expr.length; i++) {
@@ -299,7 +288,8 @@ export function string(expr: string): Parser {
   };
 }
 
-export function regexp(expr: RegExp): Parser {
+export const regex = regexp;
+export function regexp(expr: RegExp): Parser<string> {
   return {
     parse(str, index) {
       const matched = expr.exec(str.slice(index));
@@ -318,7 +308,7 @@ export function regexp(expr: RegExp): Parser {
   };
 }
 
-export function integer(): Parser {
+export function integer(): Parser<string> {
   return {
     parse(str, index) {
       let value = "";
