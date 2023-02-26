@@ -43,7 +43,7 @@ const numberLiteral = map(notEmpty(regex(/\d*(\.\d+)?/)), (value: string) => ({
   value: Number(value),
 }));
 
-const arg = or(
+const item = or(
   nullLiteral,
   or(
     booleanLiteral,
@@ -60,7 +60,7 @@ const arg = or(
   )
 );
 
-type Arg = GetExprValue<typeof arg>;
+type Arg = GetExprValue<typeof item>;
 function args(): Expression<Arg[]> {
   const rest = map(opt(seq`${trim(comma)}${opt(lazy(args))}`), (value) => {
     if (value === undefined) return undefined;
@@ -68,7 +68,7 @@ function args(): Expression<Arg[]> {
     return value[0];
   });
 
-  return map(seq<Arg | Arg[] | undefined>`${trim(arg)}${rest}`, (value) => {
+  return map(seq<Arg | Arg[] | undefined>`${trim(item)}${rest}`, (value) => {
     return value.flatMap((x) =>
       x === undefined ? [] : Array.isArray(x) ? x : [x]
     );
@@ -106,7 +106,7 @@ function fnCallLike(): Expression<FnCallLike> {
   });
 }
 
-const pistolItem = map(zom(or(whitespaces, fnCallLike())), (value) =>
+const pistolItem = map(zom(or(whitespaces, item)), (value) =>
   value.flatMap((x) => (x === undefined ? [] : [x]))
 );
 
@@ -116,34 +116,43 @@ const { value } = translate(
 );
 
 assert.deepStrictEqual(value, [
-  { name: "test1", args: [] },
-  { name: "test2", args: [] },
-  { name: "test3", args: [{ type: "number", value: 1 }] },
+  { type: "fn-call-like", value: { name: "test1", args: [] } },
+  { type: "fn-call-like", value: { name: "test2", args: [] } },
   {
-    name: "test4",
-    args: [
-      { type: "number", value: 23 },
-      { type: "string", value: 'a   \\" hoge' },
-      { type: "boolean", value: "true" },
-      { type: "boolean", value: "false" },
-      { type: "null" },
-    ],
+    type: "fn-call-like",
+    value: { name: "test3", args: [{ type: "number", value: 1 }] },
   },
   {
-    name: "test5",
-    args: [
-      {
-        type: "fn-call-like",
-        value: {
-          name: "test6",
-          args: [
-            { type: "string", value: "hoge" },
-            { type: "boolean", value: "true" },
-            { type: "null" },
-          ],
+    type: "fn-call-like",
+    value: {
+      name: "test4",
+      args: [
+        { type: "number", value: 23 },
+        { type: "string", value: 'a   \\" hoge' },
+        { type: "boolean", value: "true" },
+        { type: "boolean", value: "false" },
+        { type: "null" },
+      ],
+    },
+  },
+  {
+    type: "fn-call-like",
+    value: {
+      name: "test5",
+      args: [
+        {
+          type: "fn-call-like",
+          value: {
+            name: "test6",
+            args: [
+              { type: "string", value: "hoge" },
+              { type: "boolean", value: "true" },
+              { type: "null" },
+            ],
+          },
         },
-      },
-    ],
+      ],
+    },
   },
 ]);
 
