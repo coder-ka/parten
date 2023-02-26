@@ -51,8 +51,8 @@ const item = or(
       stringLiteral,
       or(
         numberLiteral,
-        map(lazy(fnCallLike), (value) => ({
-          type: "fn-call-like",
+        map(lazy(fn), (value) => ({
+          type: "fn",
           value,
         }))
       )
@@ -75,11 +75,11 @@ function args(): Expression<Arg[]> {
   });
 }
 
-type FnCallLike = {
+type Fn = {
   name: string;
   args: Arg[];
 };
-function fnCallLike(): Expression<FnCallLike> {
+function fn(): Expression<Fn> {
   const name = map(word(), (name) => ({ name }));
   const callArgs = map(
     opt(seq`${bracketStart}${opt(args())}${bracketEnd}`),
@@ -116,14 +116,14 @@ const { value } = translate(
 );
 
 assert.deepStrictEqual(value, [
-  { type: "fn-call-like", value: { name: "test1", args: [] } },
-  { type: "fn-call-like", value: { name: "test2", args: [] } },
+  { type: "fn", value: { name: "test1", args: [] } },
+  { type: "fn", value: { name: "test2", args: [] } },
   {
-    type: "fn-call-like",
+    type: "fn",
     value: { name: "test3", args: [{ type: "number", value: 1 }] },
   },
   {
-    type: "fn-call-like",
+    type: "fn",
     value: {
       name: "test4",
       args: [
@@ -136,12 +136,12 @@ assert.deepStrictEqual(value, [
     },
   },
   {
-    type: "fn-call-like",
+    type: "fn",
     value: {
       name: "test5",
       args: [
         {
-          type: "fn-call-like",
+          type: "fn",
           value: {
             name: "test6",
             args: [
