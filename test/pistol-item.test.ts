@@ -111,7 +111,7 @@ const pistolItem = map(zom(or(whitespaces, item)), (value) =>
 );
 
 const { value } = translate(
-  `  test1   test2() test3(1) test4(23,"a   \\\" hoge",true , false, null, ) test5(test6("hoge", true, null))`,
+  `  test1   test2() test3(1) test4(23,"a   \\\" hoge",true , false, null, ) test5(test6("hoge", true, null)) "str" null true false 0`,
   pistolItem
 );
 
@@ -154,6 +154,11 @@ assert.deepStrictEqual(value, [
       ],
     },
   },
+  { type: "string", value: "str" },
+  { type: "null" },
+  { type: "boolean", value: "true" },
+  { type: "boolean", value: "false" },
+  { type: "number", value: 0 },
 ]);
 
 // console.dir(value, { depth: null });
