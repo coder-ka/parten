@@ -289,7 +289,12 @@ export function string<TString extends string>(expr: TString): Parser<TString> {
 }
 
 export const regex = regexp;
-export function regexp(expr: RegExp): Parser<string> {
+export function regexp(
+  expr: RegExp,
+  options: {
+    until?: string | RegExp;
+  } = {}
+): Parser<string> {
   return {
     parse(str, index) {
       const matched = expr.exec(str.slice(index));
@@ -298,7 +303,9 @@ export function regexp(expr: RegExp): Parser<string> {
         throw new Error(`Regexp ${expr} does not match string at ${index}.`);
       }
 
-      const matchedStr = matched[0];
+      const matchedStr = options.until
+        ? matched[0].split(options.until)[0]
+        : matched[0];
 
       return {
         value: matchedStr,
