@@ -262,6 +262,21 @@ export function exists(target: string): Parser<true> {
   };
 }
 
+export function until<T>(
+  target: string | RegExp,
+  expr: Expression<T>
+): Expression<T> {
+  return {
+    parse(str, index) {
+      const until =
+        typeof target === "string" ? str.indexOf(target) : str.search(target);
+      const sliced = until === -1 ? str : str.slice(0, until);
+
+      return expr.parse(sliced, index);
+    },
+  };
+}
+
 export function word() {
   return regexp(/^\w+/);
 }
