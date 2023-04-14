@@ -1,6 +1,6 @@
 {
   "name": "parten",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "main": "./dist/my-lib.umd.js",
   "module": "./dist/my-lib.es.js",
   "exports": {

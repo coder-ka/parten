@@ -38,16 +38,26 @@ export function translate<T>(
 }
 
 // utility parsers
-export function debugExpr<T>(expr: Expression<T>): Parser<T> {
+export function debugExpr<T>(expr: Expression<T>, label?: string): Parser<T> {
   const p = toParser(expr);
   return {
     parse(str, index) {
       try {
+        console.log("");
+        if (label) console.log(`【${label}】`);
+        console.log(
+          "start:",
+          index,
+          `'${str.slice(index, index + 10)}${
+            index + 10 < str.length ? "..." : ""
+          }'`
+        );
         const res = p.parse(str, index);
-        console.log("index:", res.index);
+        console.log("end:", res.index);
         console.dir(res.value, {
           depth: null,
         });
+        console.log("");
 
         return res;
       } catch (error) {
@@ -268,11 +278,15 @@ export function until<T>(
 ): Expression<T> {
   return {
     parse(str, index) {
+      const range = str.slice(index);
       const until =
-        typeof target === "string" ? str.indexOf(target) : str.search(target);
-      const sliced = until === -1 ? str : str.slice(0, until);
+        typeof target === "string"
+          ? range.indexOf(target)
+          : range.search(target);
+      const sliced = until === -1 ? range : range.slice(0, until);
+      const res = expr.parse(str.slice(0, index) + sliced, index);
 
-      return expr.parse(sliced, index);
+      return res;
     },
   };
 }
@@ -310,7 +324,9 @@ export function regexp(expr: RegExp): Parser<string> {
       const matched = expr.exec(str.slice(index));
 
       if (matched === null || matched.index !== 0) {
-        throw new Error(`Regexp ${expr} does not match string at ${index}.`);
+        throw new Error(
+          `Regexp ${expr} does not match string '${str[index]}' at ${index}.`
+        );
       }
 
       const matchedStr = matched[0];
