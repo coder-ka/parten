@@ -1,7 +1,7 @@
 # parten
 
 ```ts
-import { translate, integer, seq, ignore } from "parten";
+import { translate, integer, seq } from "parten";
 
 const segment = integer();
 
